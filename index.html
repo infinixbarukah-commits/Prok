@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebTok Viral Scroll</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      color: #fff;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+    .video-container {
+      position: relative;
+      height: 100vh;
+      width: 100vw;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+    }
+    .video {
+      position: relative;
+      height: 100vh;
+      width: 100%;
+      scroll-snap-align: start;
+    }
+    video {
+      height: 100%;
+      width: 100%;
+      object-fit: cover;
+    }
+    .controls {
+      position: absolute;
+      right: 10px;
+      bottom: 20%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      font-size: 24px;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+    }
+    .btn:hover { background: rgba(255, 255, 255, 0.3); }
+  </style>
+</head>
+<body>
+  <div class="video-container" id="videoContainer"></div>
+
+  <script>
+    const container = document.getElementById('videoContainer');
+
+    async function getVideos() {
+      try {
+        const res = await fetch('https://www.tikwm.com/api/feed/trending');
+        const data = await res.json();
+        if (data && data.data && data.data.videos) {
+          const vids = data.data.videos.slice(0, 10); // ambil 10 video pertama
+          vids.forEach(v => createVideoItem(v.play, v.title, v.download_addr));
+        } else {
+          console.error('Data tidak ditemukan:', data);
+        }
+      } catch (err) {
+        console.error('Gagal ambil data:', err);
+      }
+    }
+
+    function createVideoItem(url, title, downloadUrl) {
+      const videoDiv = document.createElement('div');
+      videoDiv.className = 'video';
+
+      const video = document.createElement('video');
+      video.src = url;
+      video.controls = false;
+      video.autoplay = false;
+      video.loop = true;
+      video.muted = false;
+      video.playsInline = true;
+
+      const controls = document.createElement('div');
+      controls.className = 'controls';
+
+      const likeBtn = document.createElement('button');
+      likeBtn.className = 'btn';
+      likeBtn.textContent = '❤️';
+
+      const downloadBtn = document.createElement('button');
+      downloadBtn.className = 'btn';
+      downloadBtn.textContent = '⬇️';
+      downloadBtn.onclick = () => window.open(downloadUrl, '_blank');
+
+      controls.appendChild(likeBtn);
+      controls.appendChild(downloadBtn);
+
+      videoDiv.appendChild(video);
+      videoDiv.appendChild(controls);
+      container.appendChild(videoDiv);
+    }
+
+    // Autoplay video yang sedang di layar
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const vid = entry.target.querySelector('video');
+        if (entry.isIntersecting) {
+          vid.play().catch(() => {});
+        } else {
+          vid.pause();
+        }
+      });
+    }, { threshold: 0.75 });
+
+    // Observe video setelah data di-load
+    async function init() {
+      await getVideos();
+      document.querySelectorAll('.video').forEach(v => observer.observe(v));
+    }
+
+    init();
+  </script>
+</body>
+</html>
