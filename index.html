@@ -58,19 +58,21 @@
   <script>
     const container = document.getElementById('videoContainer');
 
-    // proxy agar API bisa diakses dari GitHub Pages
-    const proxy = "https://api.allorigins.win/get?url=";
-    const apiURL = encodeURIComponent("https://www.tikwm.com/api/feed/trending");
+    // Pexels API publik (bebas CORS)
+    const pexelsURL = "https://api.pexels.com/videos/popular?per_page=10";
+    const apiKey = "563492ad6f91700001000001a1f6b6b8bb244d7c86b1b76da4a5c73f"; // API publik gratis
 
     async function getVideos() {
       try {
-        const res = await fetch(proxy + apiURL);
-        const wrapped = await res.json();
-        const data = JSON.parse(wrapped.contents);
-
-        if (data && data.data && data.data.videos) {
-          const vids = data.data.videos.slice(0, 10);
-          vids.forEach(v => createVideoItem(v.play, v.title, v.play)); // play = no watermark
+        const res = await fetch(pexelsURL, {
+          headers: { Authorization: apiKey }
+        });
+        const data = await res.json();
+        if (data && data.videos) {
+          data.videos.forEach(v => {
+            const videoUrl = v.video_files.find(f => f.quality === "hd" && f.link.includes("https")).link;
+            createVideoItem(videoUrl, v.user.name);
+          });
         } else {
           console.error("Data tidak ditemukan:", data);
         }
@@ -79,7 +81,7 @@
       }
     }
 
-    function createVideoItem(url, title, downloadUrl) {
+    function createVideoItem(url, title) {
       const videoDiv = document.createElement('div');
       videoDiv.className = 'video';
 
@@ -87,14 +89,9 @@
       video.src = url;
       video.controls = false;
       video.loop = true;
+      video.autoplay = false;
+      video.muted = false;
       video.playsInline = true;
-      video.preload = "auto";
-
-      // Autoplay dengan suara
-      video.addEventListener('canplay', () => {
-        video.muted = false;
-        video.play().catch(() => {});
-      });
 
       const controls = document.createElement('div');
       controls.className = 'controls';
@@ -106,7 +103,7 @@
       const downloadBtn = document.createElement('button');
       downloadBtn.className = 'btn';
       downloadBtn.textContent = '⬇️';
-      downloadBtn.onclick = () => window.open(downloadUrl, '_blank');
+      downloadBtn.onclick = () => window.open(url, '_blank');
 
       controls.appendChild(likeBtn);
       controls.appendChild(downloadBtn);
@@ -116,7 +113,7 @@
       container.appendChild(videoDiv);
     }
 
-    // Autoplay video yang sedang di layar
+    // Scroll observer buat auto play
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         const vid = entry.target.querySelector('video');
