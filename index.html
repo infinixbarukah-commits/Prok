@@ -58,18 +58,24 @@
   <script>
     const container = document.getElementById('videoContainer');
 
+    // proxy agar API bisa diakses dari GitHub Pages
+    const proxy = "https://api.allorigins.win/get?url=";
+    const apiURL = encodeURIComponent("https://www.tikwm.com/api/feed/trending");
+
     async function getVideos() {
       try {
-        const res = await fetch('https://www.tikwm.com/api/feed/trending');
-        const data = await res.json();
+        const res = await fetch(proxy + apiURL);
+        const wrapped = await res.json();
+        const data = JSON.parse(wrapped.contents);
+
         if (data && data.data && data.data.videos) {
-          const vids = data.data.videos.slice(0, 10); // ambil 10 video pertama
-          vids.forEach(v => createVideoItem(v.play, v.title, v.download_addr));
+          const vids = data.data.videos.slice(0, 10);
+          vids.forEach(v => createVideoItem(v.play, v.title, v.play)); // play = no watermark
         } else {
-          console.error('Data tidak ditemukan:', data);
+          console.error("Data tidak ditemukan:", data);
         }
       } catch (err) {
-        console.error('Gagal ambil data:', err);
+        console.error("Gagal ambil data:", err);
       }
     }
 
@@ -80,10 +86,15 @@
       const video = document.createElement('video');
       video.src = url;
       video.controls = false;
-      video.autoplay = false;
       video.loop = true;
-      video.muted = false;
       video.playsInline = true;
+      video.preload = "auto";
+
+      // Autoplay dengan suara
+      video.addEventListener('canplay', () => {
+        video.muted = false;
+        video.play().catch(() => {});
+      });
 
       const controls = document.createElement('div');
       controls.className = 'controls';
@@ -117,7 +128,6 @@
       });
     }, { threshold: 0.75 });
 
-    // Observe video setelah data di-load
     async function init() {
       await getVideos();
       document.querySelectorAll('.video').forEach(v => observer.observe(v));
